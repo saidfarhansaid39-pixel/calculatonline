@@ -12,7 +12,7 @@
  * relative ones. It is a no-op when no such specifiers exist (e.g. builds that
  * already emit relative specifiers).
  */
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -73,4 +73,38 @@ console.log(
 );
 if (leftover.length > 0) {
   console.log(leftover.slice(0, 5).join("\n"));
+  process.exit(1);
+}
+
+// ------------------------------------------------------------------
+// Materialize missing external asset imports.
+//
+// Next's nft trace does not list `Geist-Regular.ttf.bin` (the @vercel/og
+// fallback font), so the traced handler dir lacks it while the import in
+// handler.mjs points at it -> wrangler's module collector fails with ENOENT.
+// Copy any unresolved `./` import target from the project tree when present.
+// ------------------------------------------------------------------
+const relImports = [...code.matchAll(/(?:import|require)\(\s*["'](\.\/[^"']+)["']\s*\)/g)].map(
+  (m) => m[1]
+);
+const unresolved = [];
+let copied = 0;
+for (const spec of relImports) {
+  const rel = spec.slice(2);
+  const target = path.join(handlerDir, rel);
+  if (existsSync(target)) continue;
+  const source = path.join(root, rel);
+  if (existsSync(source)) {
+    mkdirSync(path.dirname(target), { recursive: true });
+    copyFileSync(source, target);
+    copied += 1;
+    console.log(`[cf-fix-og-import] copied missing import target: ${rel}`);
+  } else {
+    unresolved.push(spec);
+  }
+}
+console.log(`[cf-fix-og-import] ${copied} copied, ${unresolved.length} unresolved`);
+if (unresolved.length > 0) {
+  console.error(unresolved.join("\n"));
+  process.exit(1);
 }
