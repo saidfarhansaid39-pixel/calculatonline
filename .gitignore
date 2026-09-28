@@ -41,6 +41,10 @@
 !/PRD-CalculatorUniverseX.md
 !/.vercelignore
 
+# Cloudflare / OpenNext config
+!/wrangler.jsonc
+!/open-next.config.ts
+
 # Still exclude node_modules and build output
 node_modules/
 .next/

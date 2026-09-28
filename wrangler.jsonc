@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "main": ".open-next/worker.js",
+  "name": "calculat",
+  "account_id": "d7b03ca08acea3d93b98c3348c03e424",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": [
+    // Required by @opennextjs/cloudflare (Node.js API in workerd)
+    "nodejs_compat",
+    // Allow the app to fetch public URLs (currency APIs etc.)
+    "global_fetch_strictly_public"
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "calculat"
+    }
+  ],
+  // Enable once the API token has R2 Storage:Edit (ISR incremental cache):
+  // "r2_buckets": [
+  //   { "binding": "NEXT_INC_CACHE_R2_BUCKET", "bucket_name": "calculat-isr-cache" }
+  // ],
+  "workers_dev": true,
+  "observability": {
+    "enabled": true
+  }
+}

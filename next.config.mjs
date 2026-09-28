@@ -3,8 +3,16 @@ import createNextIntlPlugin from 'next-intl/plugin'
 
 const withNextIntl = createNextIntlPlugin()
 
+// Cloudflare Workers build (OpenNext adapter). Set CF_PLATFORM=cloudflare
+// when running the cf:* scripts so the adapter gets `output: 'standalone'`
+// (what it bundles) and unoptimized images (workerd has no Node image
+// optimizer and no IMAGES binding is configured). Non-Cloudflare builds
+// (next start, Vercel) keep the exact previous behavior.
+const isCloudflare = process.env.CF_PLATFORM === 'cloudflare'
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  ...(isCloudflare ? { output: 'standalone' } : {}),
   compress: true,
   turbopack: {
     root: '.',
@@ -21,6 +29,7 @@ const nextConfig = {
     remotePatterns: [
       { protocol: 'https', hostname: 'i.pravatar.cc' },
     ],
+    unoptimized: isCloudflare,
   },
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
@@ -30,7 +39,7 @@ const nextConfig = {
   staticPageGenerationTimeout: 180,
   experimental: {
     optimizePackageImports: ['lucide-react', 'recharts', 'framer-motion', 'minisearch', '@radix-ui/react-accordion', '@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select', '@radix-ui/react-tabs', '@radix-ui/react-tooltip', '@heroicons/react'],
-    cpus: 8,
+    cpus: Number(process.env.NEXT_BUILD_CPUS) || 8,
   },
 
   async headers() {
