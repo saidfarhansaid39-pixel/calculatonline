@@ -21,9 +21,9 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "translate:overrides": "node scripts/translate-overrides.mjs",
-    "cf:build": "set CF_PLATFORM=cloudflare&& npx -y --package=@opennextjs/cloudflare opennextjs-cloudflare build",
-    "cf:preview": "set CF_PLATFORM=cloudflare&& npx -y --package=@opennextjs/cloudflare opennextjs-cloudflare build && npx -y --package=@opennextjs/cloudflare opennextjs-cloudflare preview",
-    "cf:deploy": "set CF_PLATFORM=cloudflare&& npx -y --package=@opennextjs/cloudflare opennextjs-cloudflare build && npx -y --package=@opennextjs/cloudflare opennextjs-cloudflare deploy"
+    "cf:build": "set CF_PLATFORM=cloudflare&& npx -y --package=@opennextjs/cloudflare opennextjs-cloudflare build && node scripts/cf-fix-og-import.mjs",
+    "cf:preview": "set CF_PLATFORM=cloudflare&& npx -y --package=@opennextjs/cloudflare opennextjs-cloudflare build && node scripts/cf-fix-og-import.mjs && npx -y --package=@opennextjs/cloudflare opennextjs-cloudflare preview",
+    "cf:deploy": "set CF_PLATFORM=cloudflare&& npx -y --package=@opennextjs/cloudflare opennextjs-cloudflare build && node scripts/cf-fix-og-import.mjs && npx -y --package=@opennextjs/cloudflare opennextjs-cloudflare deploy"
   },
   "dependencies": {
     "@calcuniverse/calculator-registry": "workspace:*",
