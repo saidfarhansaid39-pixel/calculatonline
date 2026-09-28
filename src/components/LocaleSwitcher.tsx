@@ -1,6 +1,6 @@
 'use client'
 
-import { usePathname, useRouter } from '@/lib/navigation'
+import { usePathname } from '@/lib/navigation'
 import { routing, localeNames, type Locale, isoLangs } from '@/i18n/routing'
 import { useLocale, useTranslations } from 'next-intl'
 import { Languages, ChevronDown, Check } from 'lucide-react'
@@ -36,7 +36,6 @@ function Flag({ locale, className }: { locale: Locale; className?: string }) {
 
 export function LocaleSwitcher({ variant = 'dropdown' }: { variant?: 'dropdown' | 'minimal' }) {
   const pathname = usePathname()
-  const router = useRouter()
   const currentLocale = useLocale() as Locale
   const tc = useTranslations('chrome')
   const [open, setOpen] = useState(false)
@@ -50,9 +49,29 @@ export function LocaleSwitcher({ variant = 'dropdown' }: { variant?: 'dropdown' 
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  const switchLocale = (locale: Locale) => {
-    router.replace(pathname, { locale })
+  const switchLocale = (target: Locale) => {
+    // Strip any leading locale segment already present in the pathname
+    // (e.g. "/fr", or even a legacy double "/de/fr") so the new locale is
+    // never stacked on top of an old one.
+    const parts = pathname.split('/')
+    const localeSegments = routing.locales as readonly string[]
+    while (parts.length > 1 && localeSegments.includes(parts[1] as string)) {
+      parts.splice(1, 1)
+    }
+    const cleanPath = parts.join('/').replace(/\/+$/, '')
     setOpen(false)
+    if (target === currentLocale) return
+    // Remember the choice for prefixless URLs ("/") — parity with the locale
+    // cookie next-intl's router used to sync on every switch.
+    document.cookie = `NEXT_LOCALE=${target}; path=/; max-age=31536000; samesite=lax`
+    // Full page navigation: the root layout (which owns the intl provider and
+    // <html lang>) is NOT re-rendered on client-side navigations between
+    // locale prefixes, so a soft router.replace keeps the previous locale's
+    // messages, flag, and <html lang>. A full load renders everything in the
+    // target locale — and a path still carrying the old locale's translated
+    // slugs gets the cross-locale 308 from the catch-all route.
+    const targetPath = target === 'en' ? (cleanPath || '/') : `/${target}${cleanPath}`
+    window.location.assign(targetPath)
   }
 
   if (variant === 'minimal') {

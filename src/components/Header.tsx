@@ -3,7 +3,7 @@
 import { Link, usePathname, useRouter } from '@/lib/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { Search, Menu, X, Moon, Sun, ChevronDown } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { LocaleSwitcher } from '@/components/LocaleSwitcher'
 import { PopularSearches } from '@/components/search/PopularSearches'
 import { useAuth } from '@/components/auth/useAuth'
@@ -12,6 +12,7 @@ export function Header() {
   const t = useTranslations('nav')
   const tc = useTranslations('chrome')
   const pathname = usePathname()
+  const locale = useLocale()
   const router = useRouter()
   const { user, logout } = useAuth()
 
@@ -55,7 +56,9 @@ export function Header() {
   useEffect(() => {
     setMenuOpen(false);
     setMoreOpen(false);
-  }, [pathname]);
+    // `locale` included: a pure language switch can keep the same stripped
+    // pathname (e.g. "/" -> "/fr"), and menus must still close.
+  }, [pathname, locale]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {

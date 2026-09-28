@@ -1,7 +1,7 @@
 import { notFound, permanentRedirect } from 'next/navigation'
 import { setRequestLocale } from 'next-intl/server'
 import { findCalculator } from '@/lib/hub-data'
-import { resolveHubSlug, resolveCalcSlug, localizedHub } from '@/lib/slug-paths'
+import { resolveHubSlug, resolveCalcSlug, localizedHub, localizedCalc, hubPath, calcPath, crossResolveCalc } from '@/lib/slug-paths'
 import { AUTHORS } from '@/lib/authors'
 import { CalculatorPageContent, generateCalculatorMetadata } from '@/components/hub-pages/calculator-page-content'
 import { HubLandingContent, generateHubLandingMetadata } from '@/components/hub-pages/hub-landing'
@@ -252,9 +252,13 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     }
     const hubRes = resolveHubSlug(locale, slug[0])
     if (!hubRes) notFound()
-    if (locale !== 'en' && slug[0] !== hubRes.localized) {
+    if (slug[0] !== hubRes.localized) {
+      // Redirects canonical segments on non-EN locales to their translated form
+      // and cross-locale segments (e.g. an FR slug under /de) to this locale's
+      // translation. For `en`, localized === canonical, so this only fires for
+      // cross-locale input, targeting the prefixless root path.
       const sp = await searchParams
-      permanentRedirect(withQuery(`/${locale}/${hubRes.localized}`, sp))
+      permanentRedirect(withQuery(hubPath(locale, hubRes.canonical), sp))
     }
     return <HubLandingContent hubSlug={hubRes.canonical} searchParams={searchParams} />
   }
@@ -267,11 +271,29 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
   if (!hubRes) notFound()
   const calcRes = resolveCalcSlug(locale, hubRes.canonical, slug[1])
   if (/\d$/.test(calcRes.canonical)) notFound()
-  const calc = await findCalculator(calcRes.canonical, hubRes.canonical)
-  if (!calc) notFound()
-  if (locale !== 'en' && (slug[0] !== hubRes.localized || slug[1] !== calcRes.localized)) {
-    const sp = await searchParams
-    permanentRedirect(withQuery(`/${locale}/${hubRes.localized}/${calcRes.localized}`, sp))
+  let canonicalCalc = calcRes.canonical
+  let calc = await findCalculator(canonicalCalc, hubRes.canonical)
+  if (!calc) {
+    // The calculator segment may be another locale's translation (the language
+    // switcher keeps the old locale's slugs under the new prefix) — resolve it
+    // to canonical so we redirect instead of 404.
+    const cross = crossResolveCalc(hubRes.canonical, slug[1])
+    if (cross && cross !== canonicalCalc && !/\d$/.test(cross)) {
+      const crossCalc = await findCalculator(cross, hubRes.canonical)
+      if (crossCalc) {
+        calc = crossCalc
+        canonicalCalc = cross
+      }
+    }
   }
-  return <CalculatorPageContent hubSlug={hubRes.canonical} slug={calcRes.canonical} />
+  if (!calc) notFound()
+  if (slug[0] !== hubRes.localized || slug[1] !== localizedCalc(locale, hubRes.canonical, canonicalCalc)) {
+    // Redirects canonical segments on non-EN locales to their translated form
+    // and cross-locale segments (e.g. an FR slug under /de) to this locale's
+    // translation. For `en`, localized === canonical, so this only fires for
+    // cross-locale input, targeting the prefixless root path.
+    const sp = await searchParams
+    permanentRedirect(withQuery(calcPath(locale, hubRes.canonical, canonicalCalc), sp))
+  }
+  return <CalculatorPageContent hubSlug={hubRes.canonical} slug={canonicalCalc} />
 }

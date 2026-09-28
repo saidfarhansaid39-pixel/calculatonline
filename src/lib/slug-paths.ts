@@ -53,6 +53,14 @@ const calcReverseCache = new Map<string, Map<string, string>>() // key: `${local
 // Forward index: locale -> (canonical hub -> localized segment)
 const hubForwardCache = new Map<string, Map<string, string>>()
 
+// Cross-locale index: a segment translated for locale A requested under locale
+// B (e.g. the language switcher keeps /de/calculateurs-de-sante/... when moving
+// from fr to de). Consulted ONLY on paths that would otherwise notFound, so
+// resolution order for valid URLs is unchanged.
+const CROSS_LOCALES = routing.locales.filter((l) => l !== 'en')
+let hubCrossIndex: Map<string, string> | null = null
+const calcCrossIndexCache = new Map<string, Map<string, string>>()
+
 function mapFor(locale: string): SlugMap | undefined {
   return MAPS[locale]
 }
@@ -95,6 +103,46 @@ function hubForward(locale: string): Map<string, string> {
 export function localizedHub(locale: string, hub: string): string {
   if (locale === 'en') return hub
   return hubForward(locale).get(hub) ?? hub
+}
+
+/** All locales' hub translations -> canonical (first match wins, routing order). */
+function hubCross(): Map<string, string> {
+  if (!hubCrossIndex) {
+    hubCrossIndex = new Map()
+    for (const l of CROSS_LOCALES) {
+      const hubs = mapFor(l)?.hubs || {}
+      for (const [localized, canonical] of Object.entries(hubs)) {
+        if (!hubCrossIndex.has(localized)) hubCrossIndex.set(localized, canonical)
+      }
+    }
+  }
+  return hubCrossIndex
+}
+
+/** All locales' calculator translations for one hub -> canonical. */
+function calcCrossIndex(hub: string): Map<string, string> {
+  let idx = calcCrossIndexCache.get(hub)
+  if (!idx) {
+    idx = new Map()
+    for (const l of CROSS_LOCALES) {
+      const map = mapFor(l)?.calcs?.[hub] || {}
+      for (const [canonical, localized] of Object.entries(map)) {
+        if (!idx.has(localized)) idx.set(localized, canonical)
+      }
+    }
+    calcCrossIndexCache.set(hub, idx)
+  }
+  return idx
+}
+
+/**
+ * Map a calculator segment translated for ANOTHER locale onto its canonical
+ * slug (e.g. `/de/.../calculatrice-imc` -> `bmi-calculator`). Returns null when
+ * no locale translates the segment, so genuine unknowns still 404. Only called
+ * after the normal lookup already failed.
+ */
+export function crossResolveCalc(hub: string, seg: string): string | null {
+  return calcCrossIndex(hub).get(seg) ?? null
 }
 
 /** Translated calculator segment for this locale (identity for `en` / unmapped). */
@@ -145,11 +193,17 @@ export interface SlugResolution {
  */
 export function resolveHubSlug(locale: string, seg: string): SlugResolution | null {
   if (locale === 'en') {
-    return isValidHubSlug(seg) ? { canonical: seg, localized: seg } : null
+    if (isValidHubSlug(seg)) return { canonical: seg, localized: seg }
+    const cross = hubCross().get(seg)
+    // Another locale's translation requested at the root (e.g. via the language
+    // switcher): resolve to canonical so the caller can redirect.
+    return cross ? { canonical: cross, localized: cross } : null
   }
   const canonical = hubReverse(locale).get(seg)
   if (canonical) return { canonical, localized: seg }
   if (isValidHubSlug(seg)) return { canonical: seg, localized: localizedHub(locale, seg) }
+  const cross = hubCross().get(seg)
+  if (cross) return { canonical: cross, localized: localizedHub(locale, cross) }
   return null
 }
 

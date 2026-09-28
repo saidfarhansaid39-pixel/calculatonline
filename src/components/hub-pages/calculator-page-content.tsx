@@ -9,7 +9,7 @@ import { RelatedCalculatorCarousel } from '@/components/premium/RelatedCalculato
 import { InternalLinkingGrid } from '@/components/premium/InternalLinkingGrid'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { routing } from '@/i18n/routing'
-import { calcPath, hubPath, calcHreflangs } from '@/lib/slug-paths'
+import { calcPath, hubPath, calcHreflangs, crossResolveCalc } from '@/lib/slug-paths'
 import { getReviewedDate, getReviewKind } from '@/lib/trust'
 import { getAuthorForHub } from '@/lib/authors'
 import { SchemaMarkup, breadcrumbListSchema } from '@/components/SchemaMarkup'

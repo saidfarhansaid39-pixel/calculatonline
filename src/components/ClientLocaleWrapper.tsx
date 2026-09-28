@@ -1,31 +1,25 @@
 'use client'
 
-import { useState, useEffect, ReactNode } from 'react'
+import { useEffect, ReactNode } from 'react'
 import { NextIntlClientProvider } from 'next-intl'
 
 export function ClientLocaleWrapper({ children, initialMessages, initialLocale }: { children: ReactNode, initialMessages: Record<string, any>, initialLocale?: string }) {
-  const [locale, setLocale] = useState(initialLocale || 'en')
-  const [messages, setMessages] = useState(initialMessages)
+  // The server is the source of truth: the root layout re-runs for every
+  // request, so these props always match the locale of the current URL.
+  // Deriving directly from the props (instead of freezing them in useState,
+  // which ignored later prop changes) keeps the client-side locale in sync
+  // across client-side navigations. That stale state was the root cause of
+  // the language-switcher bug that produced URLs like /de/fr.
+  const locale = initialLocale || 'en'
 
+  // Keep <html lang> / <html dir> correct after a client-side locale change.
   useEffect(() => {
-    const locales = ['en', 'es', 'fr', 'de', 'pt', 'ru', 'ar', 'hi', 'ja', 'zh-CN']
-    const pathLocale = window.location.pathname.split('/')[1]
-    const fromUrl = locales.includes(pathLocale) ? pathLocale : null
-    const cookieMatch = document.cookie.match(/(?:^|;\\s*)NEXT_LOCALE=([^;]*)/)
-    const fromCookie = cookieMatch?.[1]
-    const fromBrowser = navigator.language?.split('-')[0]
-    const resolved = fromUrl || fromCookie || fromBrowser || 'en'
-    setLocale(resolved)
-    document.documentElement.lang = resolved
-    const isRtl = resolved === 'ar'
-    document.documentElement.dir = isRtl ? 'rtl' : 'ltr'
-    if (resolved !== 'en') {
-      import(`../i18n/messages/${resolved}.json`).then(mod => setMessages(mod.default)).catch(() => {})
-    }
-  }, [])
+    document.documentElement.lang = locale
+    document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr'
+  }, [locale])
 
   return (
-    <NextIntlClientProvider locale={locale} messages={messages} timeZone="UTC">
+    <NextIntlClientProvider locale={locale} messages={initialMessages} timeZone="UTC">
       {children}
     </NextIntlClientProvider>
   )
