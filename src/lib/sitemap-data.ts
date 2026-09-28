@@ -105,24 +105,27 @@ function entriesForPath(locale: string, path: string, opts: EntryOpts, localized
   }
 }
 
-/** ids emitted at /sitemap/{id}.xml and referenced from /sitemap.xml */
-export const sitemapShardIds: readonly string[] = [...locales, 'static'] as const
+/** Max URLs per sitemap shard file. Cloudflare Workers assets are capped at
+ *  25 MiB per file, and one full locale shard (~3.7k entries with 11 hreflang
+ *  links each, many percent-encoded localized slugs) measures ~26 MiB — so
+ *  every locale is split into parts of ENTRIES_PER_SHARD (~14 MiB per file,
+ *  with headroom for registry growth). */
+const ENTRIES_PER_SHARD = 2000
 
-export async function buildSitemapEntries(id: string): Promise<SitemapEntry[]> {
-  if (id === 'static') {
-    return [
-      ...staticPages.map(p => entriesForPath(defaultLocale, p, {
-        changeFrequency: 'monthly',
-        priority: p === '' ? 1.0 : 0.5,
-      }, true)),
-      ...enOnlyStaticPages.map(p => entriesForPath(defaultLocale, p, {
-        changeFrequency: 'monthly',
-        priority: 0.5,
-      }, false)),
-    ]
-  }
+function buildStaticEntries(): SitemapEntry[] {
+  return [
+    ...staticPages.map(p => entriesForPath(defaultLocale, p, {
+      changeFrequency: 'monthly',
+      priority: p === '' ? 1.0 : 0.5,
+    }, true)),
+    ...enOnlyStaticPages.map(p => entriesForPath(defaultLocale, p, {
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    }, false)),
+  ]
+}
 
-  const locale = id
+function buildLocaleEntries(locale: string): SitemapEntry[] {
   const entries: SitemapEntry[] = []
 
   for (const p of staticPages) {
@@ -178,6 +181,30 @@ export async function buildSitemapEntries(id: string): Promise<SitemapEntry[]> {
   }
 
   return entries
+}
+
+function localeShardIds(locale: string): string[] {
+  const count = buildLocaleEntries(locale).length
+  const parts = Math.max(1, Math.ceil(count / ENTRIES_PER_SHARD))
+  return Array.from({ length: parts }, (_, i) => `${locale}-${i + 1}`)
+}
+
+/** ids emitted at /sitemap/{id}.xml and referenced from /sitemap.xml
+ *  (each locale is split into numbered parts — see ENTRIES_PER_SHARD) */
+export const sitemapShardIds: readonly string[] = [
+  ...locales.flatMap(locale => localeShardIds(locale)),
+  'static',
+]
+
+export async function buildSitemapEntries(id: string): Promise<SitemapEntry[]> {
+  if (id === 'static') return buildStaticEntries()
+  const match = id.match(/^(.+)-(\d+)$/)
+  if (!match) return []
+  const [, locale, partStr] = match
+  if (!(locales as readonly string[]).includes(locale)) return []
+  const part = Number(partStr)
+  const all = buildLocaleEntries(locale)
+  return all.slice((part - 1) * ENTRIES_PER_SHARD, part * ENTRIES_PER_SHARD)
 }
 
 export function escapeXml(value: string): string {

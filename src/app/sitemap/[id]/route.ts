@@ -1,4 +1,5 @@
 import { buildSitemapEntries, sitemapShardIds, sitemapUrlsetXml } from '@/lib/sitemap-data'
+import { routing } from '@/i18n/routing'
 
 export const revalidate = 86400
 
@@ -8,6 +9,13 @@ export async function GET(
 ) {
   const { id: rawId } = await context.params
   const id = rawId.replace(/\.xml$/, '')
+  // Legacy pre-split shard URLs (/sitemap/en.xml) → first part of the split
+  if ((routing.locales as readonly string[]).includes(id)) {
+    return new Response(null, {
+      status: 301,
+      headers: { Location: `/sitemap/${id}-1.xml` },
+    })
+  }
   if (!sitemapShardIds.includes(id)) {
     return new Response('Not Found', { status: 404 })
   }

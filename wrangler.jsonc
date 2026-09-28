@@ -7,8 +7,6 @@
   "compatibility_flags": [
     // Required by @opennextjs/cloudflare (Node.js API in workerd)
     "nodejs_compat",
-    // Allow the app to fetch public URLs (currency APIs etc.)
-    "global_fetch_strictly_public"
   ],
   "assets": {
     "directory": ".open-next/assets",
