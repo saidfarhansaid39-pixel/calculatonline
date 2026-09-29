@@ -14,6 +14,7 @@
 !/tailwind.config.ts
 !/postcss.config.js
 !/vitest.workspace.ts
+!/vitest.config.ts
 !/src/
 !/packages/
 !/prisma/

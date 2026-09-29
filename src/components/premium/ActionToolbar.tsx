@@ -3,9 +3,6 @@
 import { useRef, useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import {
-  Printer,
-  FileText,
-  Share2,
   Check,
   Copy,
   Plus,
@@ -24,22 +21,29 @@ interface ActionToolbarProps {
   unitSystem?: string
   onToggleSlider?: () => void
   useSlider?: boolean
+  /** @deprecated Export/share actions now live in ExportShareSection ("Export & Share"). */
   onExport?: (format: string) => void
+  /** @deprecated Export/share actions now live in ExportShareSection ("Export & Share"). */
   onShare?: () => void
+  /** @deprecated Export/share actions now live in ExportShareSection ("Export & Share"). */
   shareCopied?: boolean
   onCopyResult?: () => void
   resultCopied?: boolean
   copyResultText?: string
   inputs?: Record<string, string>
   onSaveScenario?: () => void
+  /** @deprecated Export/share actions now live in ExportShareSection ("Export & Share"). */
   showCSV?: boolean
   modeLevel?: number
   tierFeatures?: { export?: boolean; comparison?: boolean }
   showBatch?: boolean
   onToggleBatch?: (show: boolean) => void
   extraActions?: React.ReactNode
+  /** @deprecated Export/share actions now live in ExportShareSection ("Export & Share"). */
   shareButtons?: React.ReactNode
+  /** @deprecated Export/share actions now live in ExportShareSection ("Export & Share"). */
   embedWidget?: React.ReactNode
+  /** @deprecated Export/share actions now live in ExportShareSection ("Export & Share"). */
   citationGenerator?: React.ReactNode
 }
 
@@ -58,23 +62,16 @@ export function ActionToolbar({
   unitSystem,
   onToggleSlider,
   useSlider,
-  onExport,
-  onShare,
-  shareCopied,
   onCopyResult,
   resultCopied,
   copyResultText,
   inputs,
   onSaveScenario,
-  showCSV,
   modeLevel,
   tierFeatures,
   showBatch,
   onToggleBatch,
   extraActions,
-  shareButtons,
-  embedWidget,
-  citationGenerator,
 }: ActionToolbarProps) {
   const t = useTranslations('calculatorUI')
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -142,30 +139,8 @@ export function ActionToolbar({
         </button>
       )}
 
-      {/* Desktop group — secondary actions */}
+      {/* Desktop group — secondary actions (export/share live in ExportShareSection) */}
       <div className="hidden md:flex items-center gap-2">
-        {onExport && (
-          <button onClick={() => onExport('print')} className={ghostBtn} aria-label={t('premium.actionToolbar.printAria')}>
-            <Printer className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-            {t('premium.actionToolbar.print')}
-          </button>
-        )}
-        {showCSV && onExport && (
-          <button onClick={() => onExport('csv')} className={ghostBtn} aria-label={t('premium.actionToolbar.exportCsvAria')}>
-            <FileText className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-            {t('premium.actionToolbar.csv')}
-          </button>
-        )}
-        {onShare && (
-          <button onClick={onShare} className={ghostBtn} aria-label={shareCopied ? t('premium.actionToolbar.linkCopiedAria') : t('premium.actionToolbar.shareLinkAria')}>
-            {shareCopied ? (
-              <Check className="w-3.5 h-3.5 shrink-0 text-green-500" aria-hidden="true" />
-            ) : (
-              <Share2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-            )}
-            {shareCopied ? t('premium.actionToolbar.copied') : t('premium.actionToolbar.share')}
-          </button>
-        )}
         {onCopyResult && (
           <button onClick={onCopyResult} className={ghostBtn} aria-label={resultCopied ? t('premium.actionToolbar.resultCopiedAria') : t('premium.actionToolbar.copyResultAria')}>
             {resultCopied ? (
@@ -193,9 +168,6 @@ export function ActionToolbar({
             {t('premium.actionToolbar.batch')}
           </button>
         )}
-        {shareButtons}
-        {embedWidget}
-        {citationGenerator}
         {extraActions}
       </div>
 
@@ -226,52 +198,6 @@ export function ActionToolbar({
               >
                 <History className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                 {t('premium.actionToolbar.reload')}
-              </button>
-            )}
-            {onExport && (
-              <button
-                onClick={() => {
-                  onExport('print')
-                  setDropdownOpen(false)
-                }}
-                className={ghostBtn}
-                aria-label={t('premium.actionToolbar.printAria')}
-                role="menuitem"
-              >
-                <Printer className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                {t('premium.actionToolbar.print')}
-              </button>
-            )}
-            {showCSV && onExport && (
-              <button
-                onClick={() => {
-                  onExport('csv')
-                  setDropdownOpen(false)
-                }}
-                className={ghostBtn}
-                aria-label={t('premium.actionToolbar.exportCsvAria')}
-                role="menuitem"
-              >
-                <FileText className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                {t('premium.actionToolbar.csv')}
-              </button>
-            )}
-            {onShare && (
-              <button
-                onClick={() => {
-                  onShare()
-                  setDropdownOpen(false)
-                }}
-                className={ghostBtn}
-                aria-label={shareCopied ? t('premium.actionToolbar.linkCopiedAria') : t('premium.actionToolbar.shareLinkAria')}
-                role="menuitem"
-              >
-                {shareCopied ? (
-                  <Check className="w-3.5 h-3.5 shrink-0 text-green-500" aria-hidden="true" />
-                ) : (
-                  <Share2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                )}
-                {shareCopied ? t('premium.actionToolbar.copied') : t('premium.actionToolbar.share')}
               </button>
             )}
             {onCopyResult && (
@@ -320,9 +246,6 @@ export function ActionToolbar({
                 {t('premium.actionToolbar.batch')}
               </button>
             )}
-            {shareButtons}
-            {embedWidget}
-            {citationGenerator}
             {extraActions && (
               <div onClick={() => setDropdownOpen(false)}>{extraActions}</div>
             )}

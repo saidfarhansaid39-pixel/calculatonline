@@ -13,6 +13,10 @@ interface ExportPanelProps {
   steps?: { label: string; value: string }[]
   resultValue?: string
   category?: string
+  /** Hide the built-in "Export & Share" label (used when embedded in ExportShareSection, which provides its own heading). */
+  hideLabel?: boolean
+  /** Calculator-specific CSV generator (falls back to the generic inputs/result CSV). */
+  onExportCsv?: () => string
 }
 
 function generateCSV(inputs: Record<string, string> | undefined, resultSummary: string | undefined, steps: { label: string; value: string }[] | undefined, fieldLabel: string, valueLabel: string, resultLabel: string): string {
@@ -32,7 +36,7 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url)
 }
 
-export function ExportPanel({ slug, title, inputs, resultSummary, steps, resultValue, category }: ExportPanelProps) {
+export function ExportPanel({ slug, title, inputs, resultSummary, steps, resultValue, category, hideLabel, onExportCsv }: ExportPanelProps) {
   const t = useTranslations('calculatorUI')
   const [copied, setCopied] = useState(false)
   const [showEmbed, setShowEmbed] = useState(false)
@@ -42,10 +46,16 @@ export function ExportPanel({ slug, title, inputs, resultSummary, steps, resultV
   const csvResult = t('premium.exportPanel.csvResult')
 
   const handleExportCSV = useCallback(() => {
+    if (onExportCsv) {
+      // Prefer the calculator-specific CSV generator (same output the old toolbar button produced).
+      const blob = new Blob([onExportCsv()], { type: 'text/csv;charset=utf-8;' })
+      downloadBlob(blob, `${slug}.csv`)
+      return
+    }
     const csv = generateCSV(inputs, resultSummary, steps, csvField, csvValue, csvResult)
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     downloadBlob(blob, `${slug}-results.csv`)
-  }, [slug, inputs, resultSummary, steps, csvField, csvValue, csvResult])
+  }, [slug, inputs, resultSummary, steps, csvField, csvValue, csvResult, onExportCsv])
 
   const handleExportExcel = useCallback(async () => {
     const csv = generateCSV(inputs, resultSummary, steps, csvField, csvValue, csvResult)
@@ -127,7 +137,9 @@ export function ExportPanel({ slug, title, inputs, resultSummary, steps, resultV
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('premium.exportPanel.title')}</p>
+      {!hideLabel && (
+        <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('premium.exportPanel.title')}</p>
+      )}
       <div className="flex flex-wrap gap-1.5">
         <button onClick={handleExportPDF} className="inline-flex items-center gap-1.5 min-h-[44px] px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-300" aria-label={t('premium.exportPanel.exportPdfAria')}>
           <FileDown className="w-3.5 h-3.5" /> PDF

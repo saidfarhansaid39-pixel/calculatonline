@@ -13,7 +13,7 @@ import {
   Heart, Gauge, ChevronUp, ChevronDown, AlertTriangle
 } from 'lucide-react'
 import { SchemaMarkup, calculatorSchema, faqSchema, howToSchema, breadcrumbListSchema } from '@/components/SchemaMarkup'
-import { generateCalculatorContent, longFormArticlesReady, type ContentEngineDict } from '@/lib/seo/calculator-content-engine'
+import { buildContentEngineDict, generateCalculatorContent, longFormArticlesReady, type ContentEngineDict } from '@/lib/seo/calculator-content-engine'
 import { InformationalSection } from '@/components/content/InformationalSection'
 import { CommercialSection } from '@/components/content/CommercialSection'
 import { NavigationalSection } from '@/components/content/NavigationalSection'
@@ -31,7 +31,7 @@ import { CalculatorModeProvider } from '@/lib/context/CalculatorModeContext'
 import { useAuth } from '@/components/auth/useAuth'
 import { CalculatorLayout } from '@/components/CalculatorLayout'
 import { InternationalizationPanel } from '@/components/premium/InternationalizationPanel'
-import { ExportPanel } from '@/components/premium/ExportPanel'
+import { ExportShareSection } from '@/components/premium/ExportShareSection'
 import { EnhancedResultExplanation } from '@/components/premium/EnhancedResultExplanation'
 import { DynamicFormulaChart as FormulaChart, DynamicConceptDiagram as ConceptDiagram, DynamicProcessFlowChart as ProcessFlowChart } from '@/components/premium/DynamicCharts'
 import { DynamicExampleChartGenerator as ExampleChartGenerator } from '@/components/premium/DynamicCharts'
@@ -39,9 +39,6 @@ import { InternalLinkingGrid } from '@/components/premium/InternalLinkingGrid'
 import { QualityAuditScore, generateAuditScores } from '@/components/premium/QualityAuditScore'
 import { ActionToolbar } from '@/components/premium/ActionToolbar'
 import { ExtraFieldInjector } from '@/components/premium/ExtraFieldInjector'
-import { ShareButtons } from '@/components/premium/ShareButtons'
-import { EmbedWidget } from '@/components/premium/EmbedWidget'
-import { CitationGenerator } from '@/components/premium/CitationGenerator'
 import { ExtraFieldAdjustments } from '@/components/premium/ExtraFieldAdjustments'
 import { RangeVisualizer } from '@/components/premium/RangeVisualizer'
 import { RelatedCalculatorCarousel } from '@/components/premium/RelatedCalculatorCarousel'
@@ -339,7 +336,6 @@ export function PremiumCalculatorShell({
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [copied, setCopied] = useState(false)
   const [resultCopied, setResultCopied] = useState(false)
-  const [shareCopied, setShareCopied] = useState(false)
   const [feedback, setFeedback] = useState<'yes' | 'no' | null>(null)
   const [showToC, setShowToC] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -531,12 +527,10 @@ export function PremiumCalculatorShell({
   const calcContent = useMemo(() => {
     let dict: ContentEngineDict | undefined
     try {
-      const pick = (k: string) => { try { return tce.raw(k) } catch { return undefined } }
-      const d: ContentEngineDict = {}
-      for (const k of ['whatIs', 'audience', 'useCases', 'mistakes', 'glossary', 'concepts', 'comparisons', 'pros', 'cons', 'alternatives', 'recommendations', 'audiences', 'adjectives', 'domainCtx', 'longFormFixed', 'deep', 'faqPools', 'defaultFaqs'] as const) {
-        const v = pick(k)
-        if (v !== undefined) (d as Record<string, unknown>)[k] = v
-      }
+      // buildContentEngineDict keeps only keys the translator actually has: t.raw()
+      // returns the key-path string for missing keys, which would otherwise crash
+      // the engine on EN pages (whose contentEngine namespace is intentionally empty).
+      const d = buildContentEngineDict(tce)
       if (Object.keys(d).length > 0) dict = d
     } catch { dict = undefined }
     return generateCalculatorContent({
@@ -547,28 +541,6 @@ export function PremiumCalculatorShell({
 
   const HubIcon = hubIcons[calculator.category] || Zap
   const hubTheme = getHubTheme(calculator.hubSlug || calculator.category)
-
-  const handleExport = useCallback((format: string) => {
-    if (format === 'print') window.print()
-    if (format === 'csv' && onExportCSV) {
-      const csv = onExportCSV()
-      const blob = new Blob([csv], { type: 'text/csv' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${calculator.slug}.csv`
-      a.click()
-      URL.revokeObjectURL(url)
-    }
-  }, [calculator.slug, onExportCSV])
-
-  const handleShare = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      navigator.clipboard.writeText(window.location.href)
-      setShareCopied(true)
-      setTimeout(() => setShareCopied(false), 2000)
-    }
-  }, [])
 
   const handleCopyResult = useCallback(async () => {
     const text = copyResultText || (() => {
@@ -773,11 +745,11 @@ export function PremiumCalculatorShell({
         <CalculatorModeProvider mode={mode}>
         <CurrencyProvider country={country} currency={currency}>
         <div id="calculator" ref={calcRootRef} className="card-handcrafted p-4 sm:p-6">
-          {/* Calculator Mode Toggle & Toolbar */}
+          {/* Calculator Mode Toggle */}
           {tierFeatures.modes && (
             <div className="mb-6">
-              <div className="flex items-center justify-between flex-wrap gap-y-2">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between flex-wrap gap-x-3 gap-y-2">
+                <div className="flex items-center gap-3 min-w-0">
                   <CalculatorModeToggle mode={mode} onChange={handleModeChange} availableModes={availableModes} />
                   <span className="hidden sm:inline text-xs text-gray-400 dark:text-gray-500">
                     {mode === 'basic' && t('shell.modeBasic')}
@@ -786,25 +758,18 @@ export function PremiumCalculatorShell({
                     {mode === 'expert' && t('shell.modeExpert')}
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  {tierFeatures.i18n && (
-                    <InternationalizationPanel
-                      country={country} currency={currency} measurement={measSystem}
-                      onCountryChange={handleCountryChange} onCurrencyChange={handleCurrencyChange}
-                      onMeasurementChange={handleMeasurementChange}
-                    />
-                  )}
-                  <ExportPanel
-                    slug={calculator.slug} title={calculator.title}
-                    inputs={inputs} resultSummary={copyResultText} steps={steps}
-                    resultValue={copyResultText} category={calculator.category}
+                {tierFeatures.i18n && (
+                  <InternationalizationPanel
+                    country={country} currency={currency} measurement={measSystem}
+                    onCountryChange={handleCountryChange} onCurrencyChange={handleCurrencyChange}
+                    onMeasurementChange={handleMeasurementChange}
                   />
-                </div>
+                )}
               </div>
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2 lg:gap-6">
             <div className="space-y-4 max-w-full overflow-x-auto">
               <ExtraFieldsProvider extraFields={extraFieldValues}>
               <ExtraFieldInjector
@@ -935,26 +900,13 @@ export function PremiumCalculatorShell({
                 unitSystem={unitSystem}
                 onToggleSlider={onToggleSlider}
                 useSlider={useSlider}
-                onExport={handleExport}
-                onShare={handleShare}
-                shareCopied={shareCopied}
                 onCopyResult={(copyResultText || inputs) ? handleCopyResult : undefined}
                 copyResultText={t('shell.copyResult')}
                 onSaveScenario={onSaveScenario ? handleSaveScenario : undefined}
-                showCSV={!!(tierFeatures.export && onExportCSV)}
                 modeLevel={modeLevel}
                 tierFeatures={tierFeatures}
                 showBatch={showBatch}
                 onToggleBatch={setShowBatch}
-                shareButtons={
-                  <ShareButtons url={shareUrl} title={calculator.title} description={calculator.description} />
-                }
-                embedWidget={
-                  <EmbedWidget slug={calculator.slug} title={calculator.title} hubSlug={calculator.hubSlug} />
-                }
-                citationGenerator={
-                  <CitationGenerator title={calculator.title} url={shareUrl} />
-                }
                 extraActions={extraActions}
               />
             </div>
@@ -991,6 +943,23 @@ export function PremiumCalculatorShell({
         </CalculatorModeProvider>
         )}
         </CalculatorErrorBoundary>
+
+        {/* Export & Share — unified section directly below the calculator panel */}
+        {tierFeatures.export && (
+          <ExportShareSection
+            slug={calculator.slug}
+            title={calculator.title}
+            description={calculator.description}
+            hubSlug={calculator.hubSlug}
+            category={calculator.category}
+            inputs={inputs}
+            resultSummary={copyResultText}
+            steps={steps}
+            resultValue={copyResultText}
+            shareUrl={shareUrl}
+            onExportCSV={onExportCSV}
+          />
+        )}
 
         {/* Calculation History */}
           {/* Batch Calculator (Expert+) */}

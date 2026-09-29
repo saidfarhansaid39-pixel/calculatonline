@@ -90,6 +90,36 @@ export interface ContentEngineDict {
   defaultFaqs?: { q: string; a: string }[]
 }
 
+/** Keys read from the `contentEngine` translation namespace (partial locale overrides). */
+export const CONTENT_DICT_KEYS = [
+  'whatIs', 'audience', 'useCases', 'mistakes', 'glossary', 'concepts', 'comparisons',
+  'pros', 'cons', 'alternatives', 'recommendations', 'audiences', 'adjectives',
+  'domainCtx', 'longFormFixed', 'deep', 'faqPools', 'defaultFaqs',
+] as const
+
+/**
+ * Build the locale dict from a next-intl translator, keeping ONLY keys that exist.
+ *
+ * `t.raw()` never returns `undefined` for a missing key — next-intl falls back to the
+ * key-path string (e.g. `contentEngine.pros`). The English namespace is intentionally
+ * empty (this engine generates English content natively), so without the `t.has()`
+ * guard every EN calculator page would receive 18 junk strings and crash on
+ * `(dict?.pros?.length ? dict.pros : []).map(...)` during hydration.
+ */
+export function buildContentEngineDict(lookup: { has(key: string): boolean; raw(key: string): unknown }): ContentEngineDict {
+  const dict: ContentEngineDict = {}
+  for (const key of CONTENT_DICT_KEYS) {
+    try {
+      if (!lookup.has(key)) continue
+      const value = lookup.raw(key)
+      if (value !== undefined) (dict as Record<string, unknown>)[key] = value
+    } catch {
+      // A key that exists but cannot be resolved is treated as absent → built-in EN fallback.
+    }
+  }
+  return dict
+}
+
 /** Fill {placeholders} in a translated template string. Unknown keys are left intact. */
 export function fillTemplate(s: string, params: Record<string, string>): string {
   let out = s
@@ -887,7 +917,10 @@ function generateCategoryLongForm(calculator: CalculatorEntry, dict?: ContentEng
       { q: `What is the most common mistake when calculating ${topic}?`, a: `Misapplying the formula or using incorrect units are the most frequent errors. The calculator validates inputs to catch these before computing.` },
     ],
   }
-  const defaultFaqs = dict?.defaultFaqs?.length ? dict.defaultFaqs : [
+  // Array.isArray guards: a malformed dict value (e.g. a next-intl key-path string)
+  // must fall back to the built-in English content instead of crashing `.map`/`.split`.
+  const dictFaqs = dict && Array.isArray(dict.defaultFaqs) && dict.defaultFaqs.length ? dict.defaultFaqs : undefined
+  const defaultFaqs = dictFaqs ?? [
     { q: `What is the most common mistake in ${topic} calculation?`, a: `Using inconsistent units or misreading the formula produces the most errors. The calculator validates inputs automatically to catch these issues.` },
     { q: `How accurate is this ${topic} calculator?`, a: `The calculator uses validated formulas for ${ctx.precisionContext} results. Your result's accuracy depends primarily on the quality of your input data.` },
     { q: `Can I use this calculator for professional work?`, a: `Yes, it employs professional-grade formulas. For regulated industries, verify critical results with certified tools as an additional check.` },
@@ -991,26 +1024,30 @@ export function generateCalculatorContent(calc: CalculatorEntry, dict?: ContentE
         summary: fillTemplate(c.summary, P),
       }))
     : categoryComparisons ? categoryComparisons(topic) : []
+  const dictPros = dict && Array.isArray(dict.pros) && dict.pros.length ? dict.pros : undefined
+  const dictCons = dict && Array.isArray(dict.cons) && dict.cons.length ? dict.cons : undefined
   const prosCons: ProsCons = {
-    pros: (dict?.pros?.length ? dict.pros : [
+    pros: (dictPros ?? [
       `Instant ${topic} results with no manual calculation required`,
       `Built-in ${getHubAdjective(calc.category).toLowerCase()} formulas validated by professionals`,
       `Interactive charts and visual breakdowns for better understanding`,
       `Free to use with no registration or download needed`,
       `Works on any device with internet access`,
     ]).map(s => fillTemplate(s, { ...P, adj: adj.toLowerCase() })),
-    cons: (dict?.cons?.length ? dict.cons : [
+    cons: (dictCons ?? [
       `Requires internet connection for access`,
       `Results are estimates based on provided inputs and assumptions`,
       `Limited to predefined calculation types and parameters`,
       `Should not replace professional advice for critical decisions`,
     ]).map(s => fillTemplate(s, P)),
   }
-  const alternatives = dict?.alternatives?.length
-    ? dict.alternatives.map(a => ({ name: fillTemplate(a.name, { ...P, category: cat, adj }), description: fillTemplate(a.description, { ...P, category: cat, adj }) }))
+  const dictAlternatives = dict && Array.isArray(dict.alternatives) && dict.alternatives.length ? dict.alternatives : undefined
+  const alternatives = dictAlternatives
+    ? dictAlternatives.map(a => ({ name: fillTemplate(a.name, { ...P, category: cat, adj }), description: fillTemplate(a.description, { ...P, category: cat, adj }) }))
     : buildAlternatives(calc)
-  const expertRecommendations = dict?.recommendations?.length
-    ? dict.recommendations.map(r => fillTemplate(r, P))
+  const dictRecommendations = dict && Array.isArray(dict.recommendations) && dict.recommendations.length ? dict.recommendations : undefined
+  const expertRecommendations = dictRecommendations
+    ? dictRecommendations.map(r => fillTemplate(r, P))
     : buildExpertRecommendations(calc)
   const relevantAudience = dict?.audiences?.[cat]?.length
     ? dict.audiences[cat]
