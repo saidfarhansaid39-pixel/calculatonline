@@ -77,3 +77,4 @@ src/interface.*
 src/scratch_student_loan.js
 
 .vercel
+.env*

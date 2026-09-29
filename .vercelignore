@@ -5,8 +5,13 @@ node_modules
 # Build outputs
 .next
 dist
+.build
 build
 *.log
+
+# Cloudflare / OpenNext build caches (not used by Vercel builds)
+.wrangler
+.open-next
 
 # IDE
 .idea
