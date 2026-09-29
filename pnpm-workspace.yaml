@@ -1,0 +1,19 @@
+packages:
+  - 'packages/*'
+
+# pnpm 11 fails installs (ERR_PNPM_IGNORED_BUILDS) unless every package with a
+# build script is explicitly allowed or ignored. Vercel builds run
+# `pnpm install --frozen-lockfile`, so these declarations are required there.
+onlyBuiltDependencies:
+  - '@prisma/client'
+  - '@prisma/engines'
+  - prisma
+  - esbuild
+  - '@swc/core'
+  - sharp
+
+ignoredBuiltDependencies:
+  - chromedriver
+  - '@parcel/watcher'
+  - unrs-resolver
+  - workerd

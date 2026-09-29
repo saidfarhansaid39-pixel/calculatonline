@@ -15,6 +15,7 @@
 !/postcss.config.js
 !/vitest.workspace.ts
 !/vitest.config.ts
+!/pnpm-workspace.yaml
 !/src/
 !/packages/
 !/prisma/
