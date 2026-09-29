@@ -1,19 +1,22 @@
 packages:
   - 'packages/*'
 
-# pnpm 11 fails installs (ERR_PNPM_IGNORED_BUILDS) unless every package with a
-# build script is explicitly allowed or ignored. Vercel builds run
-# `pnpm install --frozen-lockfile`, so these declarations are required there.
-onlyBuiltDependencies:
-  - '@prisma/client'
-  - '@prisma/engines'
-  - prisma
-  - esbuild
-  - '@swc/core'
-  - sharp
-
-ignoredBuiltDependencies:
-  - chromedriver
-  - '@parcel/watcher'
-  - unrs-resolver
-  - workerd
+# pnpm 11 fails installs with ERR_PNPM_IGNORED_BUILDS (strictDepBuilds is the
+# v11 default) unless every package shipping a build script is explicitly
+# decided via `allowBuilds`. pnpm 11 no longer reads the legacy
+# onlyBuiltDependencies / ignoredBuiltDependencies keys — they are inert.
+# Vercel builds run `pnpm install --frozen-lockfile`, so this list is required
+# there (first Vercel build with a cold store: Sep 29, 2026).
+allowBuilds:
+  # Build/runtime tooling that must run its scripts:
+  '@prisma/client': true   # runs `prisma generate`
+  '@prisma/engines': true  # downloads query engine binaries
+  prisma: true             # CLI (generate/migrate) — required at build time
+  esbuild: true            # velite content build
+  '@swc/core': true
+  sharp: true              # next/image optimizer
+  # Test/Cloudflare-only tooling — explicitly skipped (decided = no error):
+  chromedriver: false       # e2e tests only; downloads a driver binary
+  '@parcel/watcher': false  # optional watcher, not needed on Vercel
+  unrs-resolver: false      # eslint resolver speedup only
+  workerd: false            # Cloudflare runtime, unused on Vercel
