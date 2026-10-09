@@ -4,7 +4,6 @@ import { Link, usePathname, useRouter } from '@/lib/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { Search, Menu, X, Moon, Sun, ChevronDown } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
-import { LocaleSwitcher } from '@/components/LocaleSwitcher'
 import { PopularSearches } from '@/components/search/PopularSearches'
 import { useAuth } from '@/components/auth/useAuth'
 
@@ -56,8 +55,7 @@ export function Header() {
   useEffect(() => {
     setMenuOpen(false);
     setMoreOpen(false);
-    // `locale` included: a pure language switch can keep the same stripped
-    // pathname (e.g. "/" -> "/fr"), and menus must still close.
+    // Menus close on every navigation.
   }, [pathname, locale]);
 
   useEffect(() => {
@@ -193,8 +191,6 @@ export function Header() {
 
           {/* Right Actions */}
           <div className="flex items-center gap-1 animate-fade-in">
-            <LocaleSwitcher variant="minimal" />
-
             <button
               onClick={() => setSearchOpen(!searchOpen)}
               className="p-2 rounded-lg text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"

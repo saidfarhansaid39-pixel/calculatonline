@@ -3,7 +3,6 @@ import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { NextIntlClientProvider } from 'next-intl'
 import en from '@/i18n/messages/en.json'
-import fr from '@/i18n/messages/fr.json'
 import { ExportShareSection } from '@/components/premium/ExportShareSection'
 
 type Messages = Record<string, unknown>
@@ -31,7 +30,6 @@ function renderSection(locale: string, messages: Messages, props: SectionProps =
 }
 
 const enUI = (en as { calculatorUI: { premium: Record<string, Record<string, string>> } }).calculatorUI.premium
-const frUI = (fr as { calculatorUI: { premium: Record<string, Record<string, string>> } }).calculatorUI.premium
 
 describe('ExportShareSection', () => {
   const html = renderSection('en', en as unknown as Messages)
@@ -62,11 +60,9 @@ describe('ExportShareSection', () => {
     expect(html.indexOf('id="export-share"')).toBeGreaterThanOrEqual(0)
   })
 
-  it('renders the French heading and labels on the fr locale', () => {
-    const frHtml = renderSection('fr', fr as unknown as Messages)
-    expect(frHtml).toContain('aria-label="Exporter et partager"')
-    expect(frHtml).toContain('Exporter et partager')
-    expect(frHtml).toContain(frUI.exportPanel.exportPdfAria)
+  it('renders English heading and labels (single-locale site)', () => {
+    expect(html).toContain('aria-label="Export &amp; Share"')
+    expect(html).toContain(enUI.exportPanel.exportPdfAria)
   })
 
   it('collapses the body when defaultOpen is false', () => {

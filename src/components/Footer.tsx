@@ -1,7 +1,6 @@
 import { Link } from '@/lib/navigation'
 import { Calculator } from 'lucide-react'
 import { getLocale, getTranslations } from 'next-intl/server'
-import { LocaleSwitcher } from '@/components/LocaleSwitcher'
 
 export async function Footer() {
   const locale = await getLocale()
@@ -101,7 +100,6 @@ export async function Footer() {
             {t('copyright', { year: new Date().getFullYear() })}
           </p>
           <div className="flex items-center gap-4">
-            <LocaleSwitcher />
             <p className="text-xs text-gray-400 dark:text-gray-400">
               {t('motto')}
             </p>

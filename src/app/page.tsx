@@ -54,8 +54,12 @@ export default async function Home() {
   const t = await getTranslations('homepage')
   const th = await getTranslations('hubs')
   const { calculatorRegistry } = await import('@calcuniverse/calculator-registry')
+  // SINGLE SOURCE OF TRUTH: use calculatorRegistry for all counts
+  // Filter out auto-generated calculators (those with digits in slug) for indexable count
   function getCalculatorCount(hubSlug: string): number {
-    return calculatorRegistry.filter(c => c.hubSlug === hubSlug).length
+    return calculatorRegistry.filter(
+      c => c.hubSlug === hubSlug && !/\d$/.test(c.slug)
+    ).length
   }
 
   const hubDefs = [
@@ -147,7 +151,7 @@ export default async function Home() {
               {t('heroTitlePre')}<span className="text-gradient">{t('heroHighlight')}</span>{t('heroTitlePost')}
             </h1>
             <p className="text-lg sm:text-xl text-gray-500 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
-              {t('heroSubtitle', { count: `${calculatorRegistry.length}+` })}
+              {t('heroSubtitle', { count: `${indexableCalculators.length}+` })}
             </p>
 
             <div className="relative max-w-xl mx-auto mb-8">

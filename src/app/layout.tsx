@@ -139,7 +139,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           logo: `${siteUrl}/favicon.svg`,
           description: siteDescriptions[locale],
           sameAs: ['https://www.calculat.online', 'https://x.com/calculat', 'https://www.linkedin.com/company/calculat'],
-          contactPoint: { '@type': 'ContactPoint', contactType: 'customer service', availableLanguage: ['en', 'es', 'fr', 'de', 'pt', 'ru', 'ar', 'hi', 'ja', 'zh-CN'] },
+          contactPoint: { '@type': 'ContactPoint', contactType: 'customer service', availableLanguage: ['en'] },
           knowsAbout: ['Financial Planning', 'Health Metrics', 'Mathematics', 'Unit Conversion', 'Physics', 'Chemistry', 'Engineering', 'Statistics', 'Education', 'Construction', 'Biology', 'Ecology', 'Sports Science', 'Everyday Calculations'],
           areaServed: { '@type': 'World' },
           foundingDate: '2025',

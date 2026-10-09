@@ -53,11 +53,12 @@ const calcReverseCache = new Map<string, Map<string, string>>() // key: `${local
 // Forward index: locale -> (canonical hub -> localized segment)
 const hubForwardCache = new Map<string, Map<string, string>>()
 
-// Cross-locale index: a segment translated for locale A requested under locale
-// B (e.g. the language switcher keeps /de/calculateurs-de-sante/... when moving
-// from fr to de). Consulted ONLY on paths that would otherwise notFound, so
-// resolution order for valid URLs is unchanged.
-const CROSS_LOCALES = routing.locales.filter((l) => l !== 'en')
+// Cross-locale index: retired locale translations (slug-maps are retained so
+// legacy /xx/ URLs 301 to their English canonicals). Consulted ONLY on paths
+// that would otherwise notFound, so resolution order for valid URLs is unchanged.
+// NOTE: deliberately sourced from MAPS (not routing.locales) so it survives
+// the English-only cut.
+const CROSS_LOCALES = Object.keys(MAPS)
 let hubCrossIndex: Map<string, string> | null = null
 const calcCrossIndexCache = new Map<string, Map<string, string>>()
 

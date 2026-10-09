@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-const LOCALES = ['en', 'es', 'fr', 'de', 'pt', 'ru', 'ar', 'hi', 'ja', 'zh-CN']
+const LOCALES = ['en']
 
 function loadOverrides(locale) {
   const overridePath = join(__dirname, '..', 'src', 'i18n', 'calculator-overrides', `${locale}.json`)

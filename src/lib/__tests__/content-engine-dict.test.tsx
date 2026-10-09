@@ -54,9 +54,11 @@ describe('buildContentEngineDict', () => {
     expect(buildContentEngineDict(lookup)).toEqual({})
   })
 
-  it('includes all keys present in a real locale namespace (fr.json has 18)', () => {
-    const fr = loadLocale('fr').contentEngine as Record<string, unknown>
-    const lookup = { has: (k: string) => k in fr, raw: (k: string) => fr[k] }
+  it('includes all keys present in a complete dict', () => {
+    const full: Record<string, unknown> = Object.fromEntries(
+      CONTENT_DICT_KEYS.map((k) => [k, k === 'pros' || k === 'cons' ? ['a', 'b'] : { financial: [] }]),
+    )
+    const lookup = { has: (k: string) => k in full, raw: (k: string) => full[k] }
     const dict = buildContentEngineDict(lookup)
     expect(Object.keys(dict)).toHaveLength(CONTENT_DICT_KEYS.length)
     expect(Array.isArray(dict.pros)).toBe(true)
@@ -74,14 +76,14 @@ describe('buildContentEngineDict', () => {
   })
 })
 
-describe('real locale dicts keep working (no behavior change for non-EN locales)', () => {
-  it('uses fr.json contentEngine values instead of the built-in English fallbacks', () => {
-    const fr = loadLocale('fr').contentEngine as unknown as ContentEngineDict
-    const withFr = generateCalculatorContent(calc401k, fr)
+describe('provided dicts keep working (dict values beat built-in fallbacks)', () => {
+  it('uses dict pros/cons instead of the built-in English fallbacks', () => {
+    const custom = { pros: ['custom pro one', 'custom pro two'], cons: ['custom con'] } as unknown as ContentEngineDict
+    const withCustom = generateCalculatorContent(calc401k, custom)
     const withNone = generateCalculatorContent(calc401k, undefined)
-    expect(withFr.prosCons.pros).toHaveLength(fr.pros?.length ?? -1)
-    expect(withFr.prosCons.cons).toHaveLength(fr.cons?.length ?? -1)
-    expect(withFr.prosCons.pros).not.toEqual(withNone.prosCons.pros)
+    expect(withCustom.prosCons.pros).toEqual(['custom pro one', 'custom pro two'])
+    expect(withCustom.prosCons.cons).toEqual(['custom con'])
+    expect(withCustom.prosCons.pros).not.toEqual(withNone.prosCons.pros)
   })
 })
 

@@ -1,8 +1,7 @@
 import { notFound, permanentRedirect } from 'next/navigation'
 import { setRequestLocale } from 'next-intl/server'
 import { findCalculator } from '@/lib/hub-data'
-import { resolveHubSlug, resolveCalcSlug, localizedHub, localizedCalc, hubPath, calcPath, crossResolveCalc } from '@/lib/slug-paths'
-import { AUTHORS } from '@/lib/authors'
+import { resolveHubSlug, resolveCalcSlug, localizedCalc, hubPath, calcPath, crossResolveCalc } from '@/lib/slug-paths'
 import { CalculatorPageContent, generateCalculatorMetadata } from '@/components/hub-pages/calculator-page-content'
 import { HubLandingContent, generateHubLandingMetadata } from '@/components/hub-pages/hub-landing'
 import { routing } from '@/i18n/routing'
@@ -32,35 +31,9 @@ export const revalidate = 86400
 export async function generateStaticParams() {
   const { calculatorRegistry } = await import('@calcuniverse/calculator-registry')
   const { getAllHubSlugs } = await import('@/lib/hub-data')
-  const { routing } = await import('@/i18n/routing')
 
   const hubs = getAllHubSlugs()
-  const locales = routing.locales.filter((l: string) => l !== 'en')
   const params: { slug: string[] }[] = []
-
-  for (const locale of locales) {
-    params.push({ slug: [locale] })
-  }
-
-  const staticPages = ['about', 'contact', 'privacy', 'terms', 'calculator-builder', 'suggest-calculator', 'author']
-  for (const page of staticPages) {
-    for (const locale of locales) {
-      params.push({ slug: [locale, page] })
-    }
-  }
-
-  for (const authorId of Object.keys(AUTHORS)) {
-    for (const locale of locales) {
-      params.push({ slug: [locale, 'author', authorId] })
-    }
-  }
-
-  for (const hub of hubs) {
-    for (const locale of locales) {
-      // Pre-render the translated path (the canonical English form 301s to it)
-      params.push({ slug: [locale, localizedHub(locale, hub)] })
-    }
-  }
 
   for (const hub of hubs) {
     params.push({ slug: [hub] })
@@ -120,6 +93,35 @@ function getLocaleFromSlug(slug: string[]): string {
   return 'en'
 }
 
+// Retired locale prefixes (English-only since Oct 2026, plus the legacy /en/
+// prefix which never served distinct content). Any URL starting with one is
+// permanently redirected to its English canonical so no link equity is lost:
+//   /fr → /
+//   /fr/about → /about
+//   /fr/calculateurs-de-sante/calculatrice-imc → /health-calculators/bmi-calculator
+//   /en/mortgage → /mortgage (then the legacyPages redirect takes over)
+// Unknown remainders fall through to the English path and 404 there naturally.
+const RETIRED_LOCALES = ['en', 'es', 'fr', 'de', 'pt', 'ru', 'ar', 'hi', 'ja', 'zh-CN'] as const
+
+type SearchParams = { [key: string]: string | string[] | undefined }
+
+function redirectRetiredLocale(rawSlug: string[], sp: SearchParams): never {
+  const rest = rawSlug.slice(1)
+  if (rest.length === 0) permanentRedirect(withQuery('/', sp))
+  const hubRes = resolveHubSlug('en', rest[0])
+  if (!hubRes) permanentRedirect(withQuery('/' + rest.join('/'), sp))
+  if (rest.length === 1) permanentRedirect(withQuery(`/${hubRes.canonical}`, sp))
+  if (rest.length === 2) {
+    const cross = crossResolveCalc(hubRes.canonical, rest[1])
+    permanentRedirect(withQuery(`/${hubRes.canonical}/${cross ?? rest[1]}`, sp))
+  }
+  permanentRedirect(withQuery('/' + rest.join('/'), sp))
+}
+
+function isRetiredLocalePrefix(slug: string[]): boolean {
+  return slug.length > 0 && (RETIRED_LOCALES as readonly string[]).includes(slug[0])
+}
+
 // Preserve the query string (e.g. ?page=2) across the canonical→translated redirect.
 // The path is percent-encoded first: Location headers must be ASCII, and localized
 // slugs (e.g. /ja/健康計算ツール) are raw non-ASCII, which makes Node/Vercel reject
@@ -138,33 +140,18 @@ function withQuery(path: string, sp: { [key: string]: string | string[] | undefi
 
 const LOCALE_TITLES: Record<string, string> = {
   en: 'Calculat - Precision Calculators & Unit Converters',
-  es: 'Calculat - Calculadoras de Precisión y Conversores de Unidades',
-  fr: 'Calculat - Calculatrices et Convertisseurs de Précision',
-  de: 'Calculat - Präzisionsrechner und Einheitenumrechner',
-  pt: 'Calculat - Calculadoras de Precisão e Conversores de Unidades',
-  ru: 'Calculat - Точные калькуляторы и конвертеры единиц',
-  ar: 'Calculat - حاسبات دقيقة ومحولات وحدات',
-  hi: 'Calculat - सटीक कैलकुलेटर और यूनिट कन्वर्टर',
-  ja: 'Calculat - 精密計算機と単位変換',
-  'zh-CN': 'Calculat - 精确计算器和单位转换器',
 }
 
 const LOCALE_DESCRIPTIONS: Record<string, string> = {
   en: 'Free online calculators for finance, health, math, science, conversion, and everyday life. Fast, accurate, and beautifully designed.',
-  es: 'Calculadoras gratuitas en línea para finanzas, salud, matemáticas, ciencias, conversiones y vida cotidiana. Rápidas, precisas y hermosamente diseñadas.',
-  fr: 'Calculatrices gratuites pour finances, santé, maths, sciences, conversion et quotidien. Rapides, précises et faciles à utiliser.',
-  de: 'Kostenlose Online-Rechner für Finanzen, Gesundheit, Mathematik, Wissenschaft, Umrechnung und Alltag. Schnell, genau und schön gestaltet.',
-  pt: 'Calculadoras online gratuitas para finanças, saúde, matemática, ciência, conversão e vida cotidiana. Rápidas, precisas e lindamente projetadas.',
-  ru: 'Бесплатные онлайн-калькуляторы для финансов, здоровья, математики, науки, конвертации и повседневной жизни. Быстро, точно и красиво.',
-  ar: 'آلات حاسبة مجانية عبر الإنترنت للتمويل والصحة والرياضيات والعلوم والتحويل والحياة اليومية. سريعة ودقيقة ومصممة بشكل جميل.',
-  hi: 'वित्त, स्वास्थ्य, गणित, विज्ञान, रूपांतरण और दैनिक जीवन के लिए मुफ्त ऑनलाइन कैलकुलेटर। तेज़, सटीक और खूबसूरती से डिज़ाइन किए गए।',
-  ja: '金融、健康、数学、科学、変換、日常生活のための無料オンライン計算機。高速、正確、美しいデザイン。',
-  'zh-CN': '免费在线计算器，涵盖金融、健康、数学、科学、转换和日常生活。快速、准确、设计精美。',
 }
 
 export async function generateMetadata({ params, searchParams }: { params: Promise<{ slug: string[] }>, searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const { slug: rawSlugEnc } = await params
   const rawSlug = decodeSlug(rawSlugEnc)
+  if (isRetiredLocalePrefix(rawSlug)) {
+    redirectRetiredLocale(rawSlug, await searchParams)
+  }
   const locale = getLocaleFromSlug(rawSlug)
   setRequestLocale(locale)
   const slug = stripLocale(rawSlug)
@@ -237,6 +224,9 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
 export default async function CatchAllPage({ params, searchParams }: { params: Promise<{ slug: string[] }>, searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const { slug: rawSlugEnc } = await params
   const rawSlug = decodeSlug(rawSlugEnc)
+  if (isRetiredLocalePrefix(rawSlug)) {
+    redirectRetiredLocale(rawSlug, await searchParams)
+  }
   const locale = getLocaleFromSlug(rawSlug)
   setRequestLocale(locale)
   const slug = stripLocale(rawSlug)
